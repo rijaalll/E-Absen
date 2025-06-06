@@ -1,14 +1,14 @@
 {
     "absen-app": {
-        "user":{
-            "(id acak)": {
-                "id": "id acak",
+        "siswa":{
+            "(id siswa (jurusan)-(acak))": {
+                "id": "id siswa (jurusan)-(acak)",
                 "nama": "nama user",
                 "telephone": "no hp user",
                 "email": "email user",
                 "password": "password user",
                 "jenis_kelamin": "(laki-laki, perempuan)",
-                "role": "(siswa, guru)",
+                "role": "siswa",
                 "alamat": {
                     "provinsi": "provinsi",
                     "kota": "kota",
@@ -18,14 +18,34 @@
                     "rt": "rt",
                     "rw": "rw"
                 },
-                "detail(jika siswa)": {
+                "detail": {
                     "nama_ibu": "nama orang tua",
                     "nama_ayah": "nama orang tua",
                     "telephone_ortu": "no hp orang tua",
                     "nisn": "nisn siswa",
                     "kelas": "kelas siswa",
                     "jurusan": "jurusan siswa",
-                    "status": "(active, inactive)"
+                    "status": "(1 = active, 0 = inactive)"
+                }
+            }
+        },
+        "guru": {
+            "(id acak)": {
+                "id": "id acak",
+                "nama": "nama guru",
+                "telephone": "no hp guru",
+                "email": "email guru",
+                "password": "password guru",
+                "jenis_kelamin": "(laki-laki, perempuan)",
+                "role": "guru",
+                "alamat": {
+                    "provinsi": "provinsi",
+                    "kota": "kota",
+                    "kecamatan": "kecamatan",
+                    "kode_pos": "kode pos",
+                    "desa": "desa",
+                    "rt": "rt",
+                    "rw": "rw"
                 }
             }
         },
@@ -41,6 +61,7 @@
                 "(id siswa)": {
                     "(id acak)": {
                         "id": "id acak",
+                        "id_siswa": "id siswa",
                         "jam": "jam sekarang",
                         "menit": "menit sekarang",
                         "tanggal": "tanggal hari ini",
@@ -53,7 +74,7 @@
                 }
             }
         },
-        "qr-unique-code(hanya siswa jika benar maka tambahkan detail siswa ke /absen/(id-kelas)/(id-siswa)/(id-acak) wajib login sebagai siswa": {
+        "qr-unique-code(hanya siswa, jika benar maka tambahkan detail siswa ke /absen/(id-kelas)/(id-siswa)/(id-acak) wajib login sebagai siswa": {
             "id": "id acak",
             "code": "huruf acak 20 karakter"
         }
