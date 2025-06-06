@@ -1,36 +1,39 @@
-// Import library yang dibutuhkan
-require('dotenv').config();
+// server.js
 const express = require('express');
 const cors = require('cors');
+const admin = require('firebase-admin');
+const { db } = require('./utils/firebase');
 
-// Import rute utama
-const authRoutes = require('./routes/v1/auth.routes');
-const userRoutes = require('./routes/v1/users.routes');
-const kelasRoutes = require('./routes/v1/kelas.routes');
-const absenRoutes = require('./routes/v1/absen.routes');
 
-// Inisialisasi aplikasi Express
+// Initialize Firebase Admin
+
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors()); // Mengizinkan Cross-Origin Resource Sharing
-app.use(express.json()); // Mem-parsing body request sebagai JSON
-app.use(express.urlencoded({ extended: true }));
+app.use(cors());
+app.use(express.json());
 
-// Rute utama aplikasi
-app.get('/', (req, res) => {
-    res.json({ message: 'Selamat datang di API Absensi v1' });
+// Routes
+app.use('/v1', require('./routes/v1/auth'));
+app.use('/v1', require('./routes/v1/siswa'));
+app.use('/v1', require('./routes/v1/absen'));
+app.use('/v1', require('./routes/v1/qr'));
+app.use('/v1', require('./routes/v1/kelas'));
+
+// Basic error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Menggunakan rute yang telah didefinisikan
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/kelas', kelasRoutes);
-app.use('/api/v1/absen', absenRoutes);
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
 
-
-// Menjalankan server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Server berjalan di http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
+
+module.exports = { db };
