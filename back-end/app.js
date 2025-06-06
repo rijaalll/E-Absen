@@ -4,7 +4,6 @@ const cors = require('cors');
 const admin = require('firebase-admin');
 const { db } = require('./utils/firebase');
 
-
 // Initialize Firebase Admin
 
 const app = express();
@@ -26,8 +25,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
+// 404 handler - Fixed for Express 5.x compatibility
+app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
