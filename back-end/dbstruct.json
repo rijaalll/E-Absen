@@ -1,0 +1,61 @@
+{
+    "absen-app": {
+        "user":{
+            "(id acak)": {
+                "id": "id acak",
+                "nama": "nama user",
+                "telephone": "no hp user",
+                "email": "email user",
+                "password": "password user",
+                "jenis_kelamin": "(laki-laki, perempuan)",
+                "role": "(siswa, guru)",
+                "alamat": {
+                    "provinsi": "provinsi",
+                    "kota": "kota",
+                    "kecamatan": "kecamatan",
+                    "kode_pos": "kode pos",
+                    "desa": "desa",
+                    "rt": "rt",
+                    "rw": "rw"
+                },
+                "detail(jika siswa)": {
+                    "nama_ibu": "nama orang tua",
+                    "nama_ayah": "nama orang tua",
+                    "telephone_ortu": "no hp orang tua",
+                    "nisn": "nisn siswa",
+                    "kelas": "kelas siswa",
+                    "jurusan": "jurusan siswa",
+                    "status": "(active, inactive)"
+                }
+            }
+        },
+        "kelas": {
+            "(id acak)": {
+                "id": "id acak",
+                "kelas": "kelas",
+                "jurusan": "jurusan"
+            }
+        },
+        "absen": {
+            "(id kelas)": {
+                "(id siswa)": {
+                    "(id acak)": {
+                        "id": "id acak",
+                        "jam": "jam sekarang",
+                        "menit": "menit sekarang",
+                        "tanggal": "tanggal hari ini",
+                        "bulan": "bulan ini",
+                        "tahun": "tahun ini",
+                        "keterangan": "hadir",
+                        "kelas": "kelas",
+                        "jurusan": "jurusan"
+                    }
+                }
+            }
+        },
+        "qr-unique-code(hanya siswa jika benar maka tambahkan detail siswa ke /absen/(id-kelas)/(id-siswa)/(id-acak) wajib login sebagai siswa": {
+            "id": "id acak",
+            "code": "huruf acak 20 karakter"
+        }
+    }
+}

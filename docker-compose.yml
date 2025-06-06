@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  front-end:
+    build: ./front-end
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./front-end:/app
+      - /app/node_modules
+    command: npm run dev
+    restart: unless-stopped
+
+  back-end:
+    build: ./back-end
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./back-end:/app
+      - /app/node_modules
+    command: npm run api
+    restart: unless-stopped
+
+  # wa-bot:
+  #   build: ./wa-bot
+  #   volumes:
+  #     - ./wa-bot:/app
+  #     - /app/node_modules
+  #   command: npm run start
+  #   restart: unless-stopped
