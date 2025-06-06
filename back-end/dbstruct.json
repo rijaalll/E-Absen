@@ -59,24 +59,28 @@
         "absen": {
             "(id kelas)": {
                 "(id siswa)": {
-                    "(id acak)": {
-                        "id": "id acak",
-                        "id_siswa": "id siswa",
-                        "jam": "jam sekarang",
-                        "menit": "menit sekarang",
-                        "tanggal": "tanggal hari ini",
-                        "bulan": "bulan ini",
-                        "tahun": "tahun ini",
-                        "keterangan": "hadir",
-                        "kelas": "kelas",
-                        "jurusan": "jurusan"
+                    "tanggal-bulan-tahun": {
+                        "(id acak)": {
+                            "id": "id acak",
+                            "id_siswa": "id siswa",
+                            "jam": "jam sekarang",
+                            "menit": "menit sekarang",
+                            "tanggal": "tanggal hari ini",
+                            "bulan": "bulan ini",
+                            "tahun": "tahun ini",
+                            "keterangan": "hadir",
+                            "kelas": "kelas",
+                            "jurusan": "jurusan"
+                        }
                     }
                 }
             }
         },
         "qr-unique-code(hanya siswa, jika benar maka tambahkan detail siswa ke /absen/(id-kelas)/(id-siswa)/(id-acak) wajib login sebagai siswa": {
-            "id": "id acak",
-            "code": "huruf acak 20 karakter"
+            "(id kelas)": {
+                "id": "id acak",
+                "code": "huruf acak 20 karakter"
+            }
         }
     }
 }
