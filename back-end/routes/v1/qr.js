@@ -21,7 +21,7 @@ function generateRandomId() {
   return result;
 }
 
-// ========== 1. Generate QR (Improved) ==========
+// ========== 1. Generate QR ==========
 router.post('/qr/generate', async (req, res) => {
   try {
     const { kelas, jurusan, guru_id } = req.body;
@@ -30,33 +30,20 @@ router.post('/qr/generate', async (req, res) => {
       return res.status(400).json({ error: 'Kelas, jurusan, dan guru_id wajib diisi' });
     }
 
-    // Validate guru exists
     const guruSnapshot = await db.ref(`absen-app/guru/${guru_id}`).once('value');
     const guru = guruSnapshot.val();
     if (!guru) return res.status(404).json({ error: 'Guru tidak ditemukan' });
 
-    // Create QR key and data
     const qrKey = `${kelas}-${jurusan}`;
-    const qrId = generateRandomId();
-    const qrCode = generateRandomCode(20);
-    
     const qrData = {
-      id: qrId,
-      code: qrCode,
-      kelas: kelas.toString(), // Ensure it's a string
-      jurusan: jurusan.toString(), // Ensure it's a string
-      guru_id,
-      created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
+      id: generateRandomId(),
+      code: generateRandomCode(20),
+      kelas,
+      jurusan,
+      guru_id
     };
 
-    // Store QR data
     await db.ref(`absen-app/qr-unique-code/${qrKey}`).set(qrData);
-
-    console.log('QR Generated:', {
-      qrKey,
-      qrData
-    });
 
     res.json({
       message: 'QR Code berhasil dibuat',
@@ -66,90 +53,6 @@ router.post('/qr/generate', async (req, res) => {
     });
   } catch (error) {
     console.error('Generate QR error:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// ========== 2. Refresh QR (Improved) ==========
-router.put('/qr/refresh', async (req, res) => {
-  try {
-    const { kelas, jurusan, guru_id } = req.body;
-
-    if (!kelas || !jurusan || !guru_id) {
-      return res.status(400).json({ error: 'Kelas, jurusan, dan guru_id wajib diisi' });
-    }
-
-    // Validate guru exists
-    const guruSnapshot = await db.ref(`absen-app/guru/${guru_id}`).once('value');
-    const guru = guruSnapshot.val();
-    if (!guru) return res.status(404).json({ error: 'Guru tidak ditemukan' });
-
-    // Create new QR key and data
-    const qrKey = `${kelas}-${jurusan}`;
-    const qrId = generateRandomId();
-    const qrCode = generateRandomCode(20);
-    
-    const qrData = {
-      id: qrId,
-      code: qrCode,
-      kelas: kelas.toString(), // Ensure it's a string
-      jurusan: jurusan.toString(), // Ensure it's a string
-      guru_id,
-      created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
-    };
-
-    // Update QR data
-    await db.ref(`absen-app/qr-unique-code/${qrKey}`).set(qrData);
-
-    console.log('QR Refreshed:', {
-      qrKey,
-      qrData
-    });
-
-    res.json({
-      message: 'QR Code berhasil diperbarui',
-      kelas,
-      jurusan,
-      qr_data: qrData
-    });
-  } catch (error) {
-    console.error('Refresh QR error:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// ========== 3. Get QR (Improved) ==========
-router.get('/qr/:kelas/:jurusan', async (req, res) => {
-  try {
-    const { kelas, jurusan } = req.params;
-    const qrKey = `${kelas}-${jurusan}`;
-
-    const snapshot = await db.ref(`absen-app/qr-unique-code/${qrKey}`).once('value');
-    const qrData = snapshot.val();
-
-    if (!qrData) {
-      return res.status(404).json({ error: 'QR Code untuk kelas-jurusan ini belum dibuat' });
-    }
-
-    // Check if QR code has expired (optional expiration check)
-    const now = new Date();
-    const expiresAt = new Date(qrData.expires_at);
-    
-    if (expiresAt < now) {
-      return res.status(410).json({ 
-        error: 'QR Code sudah kadaluarsa. Silakan minta guru untuk membuat QR Code baru.',
-        expired: true
-      });
-    }
-
-    res.json({
-      kelas,
-      jurusan,
-      qr_data: qrData
-    });
-  } catch (error) {
-    console.error('Get QR error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -220,60 +123,100 @@ router.post('/qr/verify', async (req, res) => {
     const { id, id_siswa } = req.body;
 
     if (!id || !id_siswa) {
-      return res.status(400).json({ error: 'ID QR dan ID siswa wajib diisi' });
+      return res.status(400).json({
+        error: 'ID QR dan ID siswa wajib diisi',
+        valid: false
+      });
     }
 
-    // Get siswa data
+    // Get siswa data first
     const siswaSnapshot = await db.ref(`absen-app/siswa/${id_siswa}`).once('value');
     const siswa = siswaSnapshot.val();
-    if (!siswa) return res.status(404).json({ error: 'Siswa tidak ditemukan' });
 
-    // Get siswa's kelas and jurusan
+    if (!siswa) {
+      return res.status(404).json({
+        error: 'Siswa tidak ditemukan',
+        valid: false
+      });
+    }
+
+    // Validate siswa data completeness
     const siswaKelas = siswa.detail?.kelas;
     const siswaJurusan = siswa.detail?.jurusan;
 
     if (!siswaKelas || !siswaJurusan) {
-      return res.status(400).json({ 
-        error: 'Data kelas atau jurusan siswa tidak lengkap',
-        valid: false 
+      return res.status(400).json({
+        error: 'Data kelas atau jurusan siswa tidak lengkap. Silakan hubungi admin.',
+        valid: false,
+        debug: {
+          siswa_kelas: siswaKelas,
+          siswa_jurusan: siswaJurusan
+        }
       });
     }
 
-    // Cari QR berdasarkan ID
+    // Find QR code by ID across all QR codes
     const qrSnapshot = await db.ref('absen-app/qr-unique-code').once('value');
     const allQrData = qrSnapshot.val();
 
-    let foundKey = null;
     let foundQrData = null;
+    let foundKey = null;
 
     if (allQrData) {
       for (const [key, qrData] of Object.entries(allQrData)) {
-        if (qrData.id === id) {
-          foundKey = key;
+        if (qrData && qrData.id === id) {
           foundQrData = qrData;
+          foundKey = key;
           break;
         }
       }
     }
 
-    if (!foundKey || !foundQrData) {
-      return res.status(401).json({ 
+    if (!foundQrData) {
+      return res.status(401).json({
         error: 'QR Code tidak valid atau sudah kadaluarsa',
-        valid: false 
+        valid: false
       });
     }
 
-    // Validate kelas and jurusan from QR data
-    const qrKelas = foundQrData.kelas;
-    const qrJurusan = foundQrData.jurusan;
+    // Check if QR code has expired (if expires_at exists)
+    if (foundQrData.expires_at) {
+      const now = new Date();
+      const expiresAt = new Date(foundQrData.expires_at);
 
-    if (siswaKelas !== qrKelas || siswaJurusan !== qrJurusan) {
+      if (expiresAt < now) {
+        return res.status(410).json({
+          error: 'QR Code sudah kadaluarsa. Silakan minta guru untuk membuat QR Code baru.',
+          valid: false,
+          expired: true
+        });
+      }
+    }
+
+    // Extract QR kelas and jurusan
+    const qrKelas = foundQrData.kelas?.toString();
+    const qrJurusan = foundQrData.jurusan?.toString();
+
+    // CRITICAL: Validate kelas and jurusan match
+    if (!qrKelas || !qrJurusan) {
+      return res.status(400).json({
+        error: 'QR Code tidak memiliki informasi kelas atau jurusan yang valid',
+        valid: false
+      });
+    }
+
+    // Convert siswa data to string for comparison
+    const siswaKelasStr = siswaKelas.toString();
+    const siswaJurusanStr = siswaJurusan.toString();
+
+    if (siswaKelasStr !== qrKelas || siswaJurusanStr !== qrJurusan) {
       return res.status(403).json({
-        error: `QR Code ini hanya berlaku untuk kelas ${qrKelas} ${qrJurusan}. Anda terdaftar di kelas ${siswaKelas} ${siswaJurusan}.`,
+        error: `❌ QR Code ini khusus untuk kelas ${qrKelas} ${qrJurusan}. Anda terdaftar di kelas ${siswaKelasStr} ${siswaJurusanStr}. Silakan gunakan QR Code yang sesuai dengan kelas Anda.`,
         valid: false,
+        mismatch: true,
         siswa_info: {
-          kelas: siswaKelas,
-          jurusan: siswaJurusan
+          kelas: siswaKelasStr,
+          jurusan: siswaJurusanStr
         },
         qr_info: {
           kelas: qrKelas,
@@ -287,18 +230,18 @@ router.post('/qr/verify', async (req, res) => {
     const tanggal = now.getDate();
     const bulan = now.getMonth() + 1;
     const tahun = now.getFullYear();
-
     const dateKey = `${tanggal}-${bulan}-${tahun}`;
-    
-    // Check existing attendance for today
+
     const existingAbsenSnapshot = await db.ref(`absen-app/absen/${foundKey}/${id_siswa}/${dateKey}`).once('value');
     const existingAbsen = existingAbsenSnapshot.val();
 
     if (existingAbsen && Object.keys(existingAbsen).length > 0) {
+      const firstAbsen = Object.values(existingAbsen)[0];
       return res.status(409).json({
-        error: 'Anda sudah melakukan absen hari ini',
+        error: `Anda sudah melakukan absen hari ini pada ${formatTime(firstAbsen.jam, firstAbsen.menit)}`,
         valid: false,
-        existing_attendance: Object.values(existingAbsen)[0]
+        already_attended: true,
+        existing_attendance: firstAbsen
       });
     }
 
@@ -317,27 +260,39 @@ router.post('/qr/verify', async (req, res) => {
       tahun,
       keterangan: 'hadir',
       kelas: qrKelas,
-      jurusan: qrJurusan
+      jurusan: qrJurusan,
+      timestamp: now.toISOString()
     };
 
     await db.ref(`absen-app/absen/${foundKey}/${id_siswa}/${dateKey}/${absenId}`).set(absenData);
 
+    // Success response
     res.json({
-      message: 'Absen berhasil dicatat',
+      message: '✅ Absen berhasil dicatat!',
       valid: true,
       absen: absenData,
       siswa: {
         nama: siswa.nama,
-        kelas: siswaKelas,
-        jurusan: siswaJurusan
-      }
+        kelas: siswaKelasStr,
+        jurusan: siswaJurusanStr
+      },
+      waktu: `${formatTime(jam, menit)}`,
+      tanggal: `${tanggal}/${bulan}/${tahun}`
     });
 
   } catch (error) {
-    console.error('Verify QR error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('❌ Verify QR error:', error);
+    res.status(500).json({
+      error: 'Server error. Silakan coba lagi.',
+      valid: false
+    });
   }
 });
 
-
+// Helper function for time formatting
+function formatTime(jam, menit) {
+  const hour = parseInt(jam) || 0;
+  const minute = parseInt(menit) || 0;
+  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+}
 module.exports = router;

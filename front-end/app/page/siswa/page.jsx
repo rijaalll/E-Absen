@@ -21,14 +21,17 @@ export default function SiswaPage() {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
 
-  // Memoized functions to prevent unnecessary re-renders
+  // Memoized function to check today's attendance
   const checkTodayAttendance = useCallback(async () => {
-    if (!user?.id || !user?.detail?.kelas) return;
+    if (!user?.id || !user?.detail?.kelas || !user?.detail?.jurusan) {
+      setError('Data kelas atau jurusan Anda tidak lengkap. Silakan hubungi admin.');
+      return;
+    }
 
     try {
       const today = new Date();
       const response = await absenAPI.getBySiswa(user.id, {
-        kelas: user.detail.kelas,
+        kelas: `${user.detail.kelas}-${user.detail.jurusan}`,
       });
 
       const todayKey = `${today.getDate()}-${today.getMonth() + 1}-${today.getFullYear()}`;
@@ -37,19 +40,23 @@ export default function SiswaPage() {
       setAbsenToday(todayAbsen ? Object.values(todayAbsen)[0] : null);
     } catch (error) {
       console.error('Error checking today attendance:', error);
-      setError('Gagal mengecek absen hari ini');
+      setError(error.response?.data?.error || 'Gagal mengecek absen hari ini');
     }
-  }, [user?.id, user?.detail?.kelas]);
+  }, [user?.id, user?.detail?.kelas, user?.detail?.jurusan]);
 
+  // Memoized function to load attendance history
   const loadAbsenHistory = useCallback(async () => {
-    if (!user?.id || !user?.detail?.kelas) return;
+    if (!user?.id || !user?.detail?.kelas || !user?.detail?.jurusan) {
+      setError('Data kelas atau jurusan Anda tidak lengkap. Silakan hubungi admin.');
+      return;
+    }
 
     try {
       const currentMonth = new Date().getMonth() + 1;
       const currentYear = new Date().getFullYear();
 
       const response = await absenAPI.getBySiswa(user.id, {
-        kelas: user.detail.kelas,
+        kelas: `${user.detail.kelas}-${user.detail.jurusan}`,
         bulan: currentMonth,
         tahun: currentYear,
       });
@@ -79,11 +86,11 @@ export default function SiswaPage() {
       setAbsenHistory(history);
     } catch (error) {
       console.error('Error loading attendance history:', error);
-      setError('Gagal memuat riwayat absen');
+      setError(error.response?.data?.error || 'Gagal memuat riwayat absen');
     }
-  }, [user?.id, user?.detail?.kelas]);
+  }, [user?.id, user?.detail?.kelas, user?.detail?.jurusan]);
 
-  // Authentication check
+  // Authentication and initial data load
   useEffect(() => {
     if (!isAuthenticated || user?.role !== 'siswa') {
       router.push('/');
@@ -101,19 +108,16 @@ export default function SiswaPage() {
         if (qrScannerRef.current) {
           try {
             const state = qrScannerRef.current.getState();
-            
             if (state === Html5QrcodeScannerState.SCANNING || 
                 state === Html5QrcodeScannerState.PAUSED) {
               await qrScannerRef.current.stop();
             }
-            
             await qrScannerRef.current.clear();
           } catch (err) {
             console.warn('Cleanup on unmount:', err.message);
           }
         }
       };
-      
       cleanup();
     };
   }, []);
@@ -122,37 +126,35 @@ export default function SiswaPage() {
     if (qrScannerRef.current) {
       try {
         const state = qrScannerRef.current.getState();
-        
         if (state === Html5QrcodeScannerState.SCANNING || 
             state === Html5QrcodeScannerState.PAUSED) {
           console.log('🛑 Stopping active scanner...');
           await qrScannerRef.current.stop();
-        } else {
-          console.log('📷 Scanner already stopped, state:', state);
         }
-
         await qrScannerRef.current.clear();
         console.log('🧹 Scanner cleared successfully');
-        
       } catch (err) {
         console.warn('⚠️ Scanner cleanup warning:', {
           error: err.message,
           scanner: qrScannerRef.current ? 'exists' : 'null'
         });
-        
         if (!err.message.includes('not running') && 
             !err.message.includes('not started')) {
           console.error('❌ Unexpected scanner error:', err);
         }
       }
-      
       qrScannerRef.current = null;
     }
   };
 
   const startScanning = async () => {
+    if (!user?.detail?.kelas || !user?.detail?.jurusan) {
+      setError('Data kelas atau jurusan Anda tidak lengkap. Silakan hubungi admin.');
+      return;
+    }
+
     if (absenToday) {
-      setMessage('Anda sudah melakukan absen hari ini!');
+      setError('Anda sudah melakukan absen hari ini!');
       return;
     }
 
@@ -174,7 +176,6 @@ export default function SiswaPage() {
 
       try {
         qrScannerRef.current = new Html5Qrcode(qrCodeRegionId);
-
         await qrScannerRef.current.start(
           { facingMode: 'environment' },
           { 
@@ -202,14 +203,19 @@ export default function SiswaPage() {
 
   const handleScanSuccess = async (decodedText, decodedResult) => {
     if (scannerStateRef.current.isProcessing) {
-      console.log('Already processing a QR code, skipping...');
+      console.log('⏳ Already processing a QR code, skipping...');
       return;
     }
 
     scannerStateRef.current.isProcessing = true;
-    
+
     console.log('🔍 QR Code detected:', decodedText);
-    console.log('🚀 Starting automatic verification...');
+    console.log('👤 User info:', {
+      kelas: user?.detail?.kelas,
+      jurusan: user?.detail?.jurusan,
+      nama: user?.nama,
+      id_siswa: user?.id,
+    });
 
     setScanResult(decodedText);
     setLoading(true);
@@ -219,7 +225,6 @@ export default function SiswaPage() {
     try {
       if (qrScannerRef.current) {
         const state = qrScannerRef.current.getState();
-        
         if (state === Html5QrcodeScannerState.SCANNING) {
           await qrScannerRef.current.stop();
           console.log('📷 Scanner stopped after QR detection');
@@ -232,34 +237,32 @@ export default function SiswaPage() {
     }
 
     try {
-      console.log('🔐 Verifying QR Code with API...');
-      
+      console.log('🔐 Verifying QR Code with API...', { id: decodedText, id_siswa: user.id });
       const response = await qrAPI.verify({
         id: decodedText,
         id_siswa: user.id,
       });
 
-      console.log('📋 API Response:', response);
+      console.log('📋 API Response:', response.data);
 
       if (response.data.valid) {
         console.log('✅ QR Code valid - Attendance recorded');
         setMessage('🎉 Absen berhasil dicatat!');
-        
-        console.log('🔄 Refreshing attendance data...');
-        await Promise.all([
-          checkTodayAttendance(),
-          loadAbsenHistory()
-        ]);
-        console.log('✨ Data refreshed successfully');
+        setScanResult('');
+        await Promise.all([checkTodayAttendance(), loadAbsenHistory()]);
       } else {
-        console.log('❌ QR Code invalid or expired');
+        console.log('❌ QR Code validation failed');
         setError(response.data.error || 'QR Code tidak valid atau sudah kadaluarsa');
       }
     } catch (error) {
       console.error('❌ QR verification error:', error);
-      const errorMessage = error.response?.data?.error || 
-                          error.message || 
-                          'Gagal memverifikasi QR Code';
+      let errorMessage = error.response?.data?.error || 'Gagal memverifikasi QR Code';
+      if (error.response?.status === 403) {
+        errorMessage = error.response.data.error || 'QR Code tidak sesuai dengan kelas atau jurusan Anda';
+      } else if (error.response?.status === 409) {
+        errorMessage = 'Anda sudah melakukan absen hari ini';
+        await checkTodayAttendance(); // Refresh to ensure absenToday is set
+      }
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -286,11 +289,9 @@ export default function SiswaPage() {
       'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
-    
     const day = parseInt(tanggal) || 1;
     const month = parseInt(bulan) || 1;
     const year = parseInt(tahun) || new Date().getFullYear();
-    
     return `${day} ${months[month - 1] || months[0]} ${year}`;
   };
 
@@ -312,7 +313,6 @@ export default function SiswaPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
@@ -332,7 +332,6 @@ export default function SiswaPage() {
         </div>
       </div>
 
-      {/* Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex">
@@ -368,7 +367,6 @@ export default function SiswaPage() {
           </nav>
         </div>
 
-        {/* Global Error Message */}
         {error && (
           <div className="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             <div className="flex justify-between items-center">
@@ -383,7 +381,6 @@ export default function SiswaPage() {
           </div>
         )}
 
-        {/* Content */}
         <div className="mt-6">
           {activeTab === 'scan' && (
             <div className="bg-white shadow rounded-lg p-6">

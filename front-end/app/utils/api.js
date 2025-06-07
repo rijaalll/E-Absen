@@ -9,6 +9,22 @@ const api = axios.create({
   },
 });
 
+// Add response interceptor for detailed error logging
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      data: error.config?.data,
+      status: error.response?.status,
+      errorMessage: error.response?.data?.error || error.message,
+      responseData: error.response?.data,
+    });
+    return Promise.reject(error);
+  }
+);
+
 // Auth APIs
 export const authAPI = {
   login: (credentials) => api.post('/login', credentials),
@@ -22,12 +38,12 @@ export const siswaAPI = {
   update: (id, data) => api.put(`/siswa/${id}`, data),
 };
 
-// Guru APIs (using same endpoints as siswa for CRUD operations)
+// Guru APIs
 export const guruAPI = {
-  getAll: () => api.get('/guru'), // This would need to be added to backend
-  create: (data) => api.post('/guru', data), // This would need to be added to backend
-  update: (id, data) => api.put(`/guru/${id}`, data), // This would need to be added to backend
-  delete: (id) => api.delete(`/guru/${id}`), // This would need to be added to backend
+  getAll: () => api.get('/guru'),
+  create: (data) => api.post('/guru', data),
+  update: (id, data) => api.put(`/guru/${id}`, data),
+  delete: (id) => api.delete(`/guru/${id}`),
 };
 
 // Kelas APIs
@@ -45,13 +61,35 @@ export const qrAPI = {
   getByKelas: (kelas, jurusan) => api.get(`/qr/${kelas}/${jurusan}`),
   generate: (data) => api.post('/qr/generate', data),
   refresh: (data) => api.put('/qr/refresh', data),
-  verify: (data) => api.post('/qr/verify', data),
+  verify: (data) =>
+    api.post('/qr/verify', data).catch((error) => {
+      console.error('QR Verification Failed:', {
+        qrId: data.id,
+        id_siswa: data.id_siswa,
+        error: error.response?.data?.error || error.message,
+        status: error.response?.status,
+        responseData: error.response?.data,
+      });
+      throw error;
+    }),
 };
 
 // Absen APIs
 export const absenAPI = {
-  getAll: (params) => api.get('/absen', { params }),
-  getBySiswa: (id_siswa, params) => api.get(`/absen/siswa/${id_siswa}`, { params }),
+  getAll: (params) =>
+    api.get('/absen', { params }).catch((error) => {
+      console.error('Absen Fetch Failed:', { params, error: error.response?.data?.error || error.message });
+      throw error;
+    }),
+  getBySiswa: (id_siswa, params) =>
+    api.get(`/absen/siswa/${id_siswa}`, { params }).catch((error) => {
+      console.error('Siswa Absen Fetch Failed:', {
+        id_siswa,
+        params,
+        error: error.response?.data?.error || error.message,
+      });
+      throw error;
+    }),
 };
 
 export default api;
