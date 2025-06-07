@@ -16,7 +16,7 @@ export const authAPI = {
 
 // Siswa APIs
 export const siswaAPI = {
-  register: (data) => api.post('/register', data),
+  register: (data) => api.post('/siswa/register', data),
   getAll: () => api.get('/siswa'),
   getById: (id) => api.get(`/siswa/${id}`),
   update: (id, data) => api.put(`/siswa/${id}`, data),
@@ -41,9 +41,10 @@ export const kelasAPI = {
 
 // QR APIs
 export const qrAPI = {
+  get: (kelas, jurusan) => api.get(`/qr/${kelas}/${jurusan}`),
+  getByKelas: (kelas, jurusan) => api.get(`/qr/${kelas}/${jurusan}`),
   generate: (data) => api.post('/qr/generate', data),
   refresh: (data) => api.put('/qr/refresh', data),
-  getByKelas: (kelas) => api.get(`/qr/${kelas}`),
   verify: (data) => api.post('/qr/verify', data),
 };
 

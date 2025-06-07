@@ -18,6 +18,7 @@ app.use('/v1', require('./routes/v1/siswa'));
 app.use('/v1', require('./routes/v1/absen'));
 app.use('/v1', require('./routes/v1/qr'));
 app.use('/v1', require('./routes/v1/kelas'));
+app.use('/v1', require('./routes/v1/guru'));
 
 // Basic error handler
 app.use((err, req, res, next) => {

@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../contexts/AuthContext';
-import { authAPI } from '../utils/api';
+import { useAuth } from './context/AuthContext';
+import { authAPI } from './utils/api';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({

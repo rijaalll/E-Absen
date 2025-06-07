@@ -77,7 +77,7 @@
             }
         },
         "qr-unique-code(hanya siswa, jika benar maka tambahkan detail siswa ke /absen/(id-kelas)/(id-siswa)/(id-acak) wajib login sebagai siswa": {
-            "(id kelas)": {
+            "(id kelas dan jurusan)": {
                 "id": "id acak",
                 "code": "huruf acak 20 karakter"
             }

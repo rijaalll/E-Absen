@@ -14,7 +14,7 @@ function generateRandomId(prefix = '') {
 }
 
 // Register siswa baru
-router.post('/register', async (req, res) => {
+router.post('/siswa/register', async (req, res) => {
   try {
     const {
       nama, telephone, email, password, jenis_kelamin,
