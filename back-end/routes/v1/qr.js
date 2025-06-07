@@ -37,7 +37,10 @@ router.post('/qr/generate', async (req, res) => {
     const qrKey = `${kelas}-${jurusan}`;
     const qrData = {
       id: generateRandomId(),
-      code: generateRandomCode(20)
+      code: generateRandomCode(20),
+      kelas,
+      jurusan,
+      guru_id
     };
 
     await db.ref(`absen-app/qr-unique-code/${qrKey}`).set(qrData);
@@ -70,7 +73,10 @@ router.put('/qr/refresh', async (req, res) => {
     const qrKey = `${kelas}-${jurusan}`;
     const qrData = {
       id: generateRandomId(),
-      code: generateRandomCode(20)
+      code: generateRandomCode(20),
+      kelas,
+      jurusan,
+      guru_id
     };
 
     await db.ref(`absen-app/qr-unique-code/${qrKey}`).set(qrData);
@@ -120,9 +126,21 @@ router.post('/qr/verify', async (req, res) => {
       return res.status(400).json({ error: 'ID QR dan ID siswa wajib diisi' });
     }
 
+    // Get siswa data
     const siswaSnapshot = await db.ref(`absen-app/siswa/${id_siswa}`).once('value');
     const siswa = siswaSnapshot.val();
     if (!siswa) return res.status(404).json({ error: 'Siswa tidak ditemukan' });
+
+    // Get siswa's kelas and jurusan
+    const siswaKelas = siswa.detail?.kelas;
+    const siswaJurusan = siswa.detail?.jurusan;
+
+    if (!siswaKelas || !siswaJurusan) {
+      return res.status(400).json({ 
+        error: 'Data kelas atau jurusan siswa tidak lengkap',
+        valid: false 
+      });
+    }
 
     // Cari QR berdasarkan ID
     const qrSnapshot = await db.ref('absen-app/qr-unique-code').once('value');
@@ -148,16 +166,48 @@ router.post('/qr/verify', async (req, res) => {
       });
     }
 
-    const [kelas, jurusan] = foundKey.split('-');
+    // Validate kelas and jurusan from QR data
+    const qrKelas = foundQrData.kelas;
+    const qrJurusan = foundQrData.jurusan;
 
+    if (siswaKelas !== qrKelas || siswaJurusan !== qrJurusan) {
+      return res.status(403).json({
+        error: `QR Code ini hanya berlaku untuk kelas ${qrKelas} ${qrJurusan}. Anda terdaftar di kelas ${siswaKelas} ${siswaJurusan}.`,
+        valid: false,
+        siswa_info: {
+          kelas: siswaKelas,
+          jurusan: siswaJurusan
+        },
+        qr_info: {
+          kelas: qrKelas,
+          jurusan: qrJurusan
+        }
+      });
+    }
+
+    // Check if already attended today
     const now = new Date();
     const tanggal = now.getDate();
     const bulan = now.getMonth() + 1;
     const tahun = now.getFullYear();
-    const jam = now.getHours();
-    const menit = now.getMinutes();
 
     const dateKey = `${tanggal}-${bulan}-${tahun}`;
+    
+    // Check existing attendance for today
+    const existingAbsenSnapshot = await db.ref(`absen-app/absen/${foundKey}/${id_siswa}/${dateKey}`).once('value');
+    const existingAbsen = existingAbsenSnapshot.val();
+
+    if (existingAbsen && Object.keys(existingAbsen).length > 0) {
+      return res.status(409).json({
+        error: 'Anda sudah melakukan absen hari ini',
+        valid: false,
+        existing_attendance: Object.values(existingAbsen)[0]
+      });
+    }
+
+    // Record attendance
+    const jam = now.getHours();
+    const menit = now.getMinutes();
     const absenId = generateRandomId();
 
     const absenData = {
@@ -169,8 +219,8 @@ router.post('/qr/verify', async (req, res) => {
       bulan,
       tahun,
       keterangan: 'hadir',
-      kelas,
-      jurusan: siswa.detail?.jurusan || jurusan
+      kelas: qrKelas,
+      jurusan: qrJurusan
     };
 
     await db.ref(`absen-app/absen/${foundKey}/${id_siswa}/${dateKey}/${absenId}`).set(absenData);
@@ -181,8 +231,8 @@ router.post('/qr/verify', async (req, res) => {
       absen: absenData,
       siswa: {
         nama: siswa.nama,
-        kelas: siswa.detail.kelas,
-        jurusan: siswa.detail.jurusan
+        kelas: siswaKelas,
+        jurusan: siswaJurusan
       }
     });
 

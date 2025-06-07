@@ -109,7 +109,6 @@ export default function SiswaPage() {
             
             await qrScannerRef.current.clear();
           } catch (err) {
-            // Silent cleanup pada unmount
             console.warn('Cleanup on unmount:', err.message);
           }
         }
@@ -122,7 +121,6 @@ export default function SiswaPage() {
   const cleanupScanner = async () => {
     if (qrScannerRef.current) {
       try {
-        // Cek apakah scanner sedang berjalan sebelum stop
         const state = qrScannerRef.current.getState();
         
         if (state === Html5QrcodeScannerState.SCANNING || 
@@ -133,18 +131,15 @@ export default function SiswaPage() {
           console.log('📷 Scanner already stopped, state:', state);
         }
 
-        // Clear scanner element
         await qrScannerRef.current.clear();
         console.log('🧹 Scanner cleared successfully');
         
       } catch (err) {
-        // Log lebih detail untuk debugging
         console.warn('⚠️ Scanner cleanup warning:', {
           error: err.message,
           scanner: qrScannerRef.current ? 'exists' : 'null'
         });
         
-        // Jika error karena scanner sudah stopped, abaikan
         if (!err.message.includes('not running') && 
             !err.message.includes('not started')) {
           console.error('❌ Unexpected scanner error:', err);
@@ -166,7 +161,6 @@ export default function SiswaPage() {
     setIsScanning(true);
     scannerStateRef.current.isProcessing = false;
 
-    // Small delay to ensure DOM element is rendered
     setTimeout(async () => {
       const qrCodeRegionId = 'qr-reader';
       const qrElement = document.getElementById(qrCodeRegionId);
@@ -207,13 +201,11 @@ export default function SiswaPage() {
   };
 
   const handleScanSuccess = async (decodedText, decodedResult) => {
-    // Prevent multiple simultaneous processing of the same QR
     if (scannerStateRef.current.isProcessing) {
       console.log('Already processing a QR code, skipping...');
       return;
     }
 
-    // Set processing flag immediately
     scannerStateRef.current.isProcessing = true;
     
     console.log('🔍 QR Code detected:', decodedText);
@@ -224,7 +216,6 @@ export default function SiswaPage() {
     setMessage('');
     setError('');
 
-    // Stop scanner safely - cek state dulu
     try {
       if (qrScannerRef.current) {
         const state = qrScannerRef.current.getState();
@@ -254,7 +245,6 @@ export default function SiswaPage() {
         console.log('✅ QR Code valid - Attendance recorded');
         setMessage('🎉 Absen berhasil dicatat!');
         
-        // Refresh data to show updated attendance
         console.log('🔄 Refreshing attendance data...');
         await Promise.all([
           checkTodayAttendance(),
@@ -263,14 +253,14 @@ export default function SiswaPage() {
         console.log('✨ Data refreshed successfully');
       } else {
         console.log('❌ QR Code invalid or expired');
-        setError('QR Code tidak valid atau sudah kadaluarsa');
+        setError(response.data.error || 'QR Code tidak valid atau sudah kadaluarsa');
       }
     } catch (error) {
       console.error('❌ QR verification error:', error);
       const errorMessage = error.response?.data?.error || 
                           error.message || 
                           'Gagal memverifikasi QR Code';
-      setError(`Verifikasi gagal: ${errorMessage}`);
+      setError(errorMessage);
     } finally {
       setLoading(false);
       await cleanupScanner();
@@ -280,7 +270,6 @@ export default function SiswaPage() {
   };
 
   const handleScanFailure = (error) => {
-    // Only log significant errors, not continuous scan failures
     if (error && !error.includes('NotFoundException')) {
       console.warn('QR scan error:', error);
     }
@@ -310,7 +299,6 @@ export default function SiswaPage() {
     setError('');
   };
 
-  // Loading state for authentication check
   if (!isAuthenticated || user?.role !== 'siswa') {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -400,6 +388,9 @@ export default function SiswaPage() {
           {activeTab === 'scan' && (
             <div className="bg-white shadow rounded-lg p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Scan QR Code Absen</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Hanya QR Code untuk kelas {user?.detail?.kelas} {user?.detail?.jurusan} yang dapat digunakan.
+              </p>
 
               {absenToday ? (
                 <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
@@ -424,7 +415,7 @@ export default function SiswaPage() {
                       <div className="mb-4">
                         <div id="qr-reader" className="w-full max-w-md mx-auto"></div>
                         <p className="text-sm text-gray-600 text-center mt-2">
-                          📱 Arahkan kamera ke QR Code<br/>
+                          📱 Arahkan kamera ke QR Code untuk {user?.detail?.kelas} {user?.detail?.jurusan}<br/>
                           <span className="text-xs text-green-600">Verifikasi akan berjalan otomatis saat QR terdeteksi</span>
                         </p>
                       </div>
@@ -460,7 +451,7 @@ export default function SiswaPage() {
                     🔐 Memverifikasi QR Code secara otomatis...
                   </p>
                   <p className="mt-1 text-xs text-gray-500">
-                    Proses verifikasi berjalan otomatis setelah QR terdeteksi
+                    Pastikan QR Code sesuai dengan {user?.detail?.kelas} {user?.detail?.jurusan}
                   </p>
                 </div>
               )}
