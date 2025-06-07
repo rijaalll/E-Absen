@@ -21,7 +21,7 @@ function generateRandomId() {
   return result;
 }
 
-// ========== 1. Generate QR ==========
+// ========== 1. Generate QR (Improved) ==========
 router.post('/qr/generate', async (req, res) => {
   try {
     const { kelas, jurusan, guru_id } = req.body;
@@ -30,20 +30,33 @@ router.post('/qr/generate', async (req, res) => {
       return res.status(400).json({ error: 'Kelas, jurusan, dan guru_id wajib diisi' });
     }
 
+    // Validate guru exists
     const guruSnapshot = await db.ref(`absen-app/guru/${guru_id}`).once('value');
     const guru = guruSnapshot.val();
     if (!guru) return res.status(404).json({ error: 'Guru tidak ditemukan' });
 
+    // Create QR key and data
     const qrKey = `${kelas}-${jurusan}`;
+    const qrId = generateRandomId();
+    const qrCode = generateRandomCode(20);
+    
     const qrData = {
-      id: generateRandomId(),
-      code: generateRandomCode(20),
-      kelas,
-      jurusan,
-      guru_id
+      id: qrId,
+      code: qrCode,
+      kelas: kelas.toString(), // Ensure it's a string
+      jurusan: jurusan.toString(), // Ensure it's a string
+      guru_id,
+      created_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
     };
 
+    // Store QR data
     await db.ref(`absen-app/qr-unique-code/${qrKey}`).set(qrData);
+
+    console.log('QR Generated:', {
+      qrKey,
+      qrData
+    });
 
     res.json({
       message: 'QR Code berhasil dibuat',
@@ -53,6 +66,90 @@ router.post('/qr/generate', async (req, res) => {
     });
   } catch (error) {
     console.error('Generate QR error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ========== 2. Refresh QR (Improved) ==========
+router.put('/qr/refresh', async (req, res) => {
+  try {
+    const { kelas, jurusan, guru_id } = req.body;
+
+    if (!kelas || !jurusan || !guru_id) {
+      return res.status(400).json({ error: 'Kelas, jurusan, dan guru_id wajib diisi' });
+    }
+
+    // Validate guru exists
+    const guruSnapshot = await db.ref(`absen-app/guru/${guru_id}`).once('value');
+    const guru = guruSnapshot.val();
+    if (!guru) return res.status(404).json({ error: 'Guru tidak ditemukan' });
+
+    // Create new QR key and data
+    const qrKey = `${kelas}-${jurusan}`;
+    const qrId = generateRandomId();
+    const qrCode = generateRandomCode(20);
+    
+    const qrData = {
+      id: qrId,
+      code: qrCode,
+      kelas: kelas.toString(), // Ensure it's a string
+      jurusan: jurusan.toString(), // Ensure it's a string
+      guru_id,
+      created_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
+    };
+
+    // Update QR data
+    await db.ref(`absen-app/qr-unique-code/${qrKey}`).set(qrData);
+
+    console.log('QR Refreshed:', {
+      qrKey,
+      qrData
+    });
+
+    res.json({
+      message: 'QR Code berhasil diperbarui',
+      kelas,
+      jurusan,
+      qr_data: qrData
+    });
+  } catch (error) {
+    console.error('Refresh QR error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ========== 3. Get QR (Improved) ==========
+router.get('/qr/:kelas/:jurusan', async (req, res) => {
+  try {
+    const { kelas, jurusan } = req.params;
+    const qrKey = `${kelas}-${jurusan}`;
+
+    const snapshot = await db.ref(`absen-app/qr-unique-code/${qrKey}`).once('value');
+    const qrData = snapshot.val();
+
+    if (!qrData) {
+      return res.status(404).json({ error: 'QR Code untuk kelas-jurusan ini belum dibuat' });
+    }
+
+    // Check if QR code has expired (optional expiration check)
+    const now = new Date();
+    const expiresAt = new Date(qrData.expires_at);
+    
+    if (expiresAt < now) {
+      return res.status(410).json({ 
+        error: 'QR Code sudah kadaluarsa. Silakan minta guru untuk membuat QR Code baru.',
+        expired: true
+      });
+    }
+
+    res.json({
+      kelas,
+      jurusan,
+      qr_data: qrData
+    });
+  } catch (error) {
+    console.error('Get QR error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -241,5 +338,6 @@ router.post('/qr/verify', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 module.exports = router;
