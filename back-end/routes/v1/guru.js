@@ -3,8 +3,8 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../../utils/firebase');
 
-// Generate random ID
-function generateRandomId() {
+// Generate random ID untuk guru (10 karakter acak)
+function generateGuruId() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
   for (let i = 0; i < 10; i++) {
@@ -13,7 +13,7 @@ function generateRandomId() {
   return result;
 }
 
-// Register guru baru
+// Register guru baru - Updated untuk struktur database baru
 router.post('/guru/register', async (req, res) => {
   try {
     const {
@@ -26,18 +26,18 @@ router.post('/guru/register', async (req, res) => {
     }
 
     // Cek email sudah ada atau belum
-    const snapshot = await db.ref('absen-app/guru').once('value');
-    const existingGuru = snapshot.val();
+    const snapshot = await db.ref('absen-app/app/user').once('value');
+    const existingUsers = snapshot.val();
     
-    if (existingGuru) {
-      const emailExists = Object.values(existingGuru).some(guru => guru.email === email);
+    if (existingUsers) {
+      const emailExists = Object.values(existingUsers).some(user => user.email === email);
       if (emailExists) {
         return res.status(400).json({ error: 'Email sudah terdaftar' });
       }
     }
 
     // Generate ID guru
-    const guruId = generateRandomId();
+    const guruId = generateGuruId();
 
     const guruData = {
       id: guruId,
@@ -58,8 +58,8 @@ router.post('/guru/register', async (req, res) => {
       }
     };
 
-    // Simpan ke Firebase
-    await db.ref(`absen-app/guru/${guruId}`).set(guruData);
+    // Simpan ke struktur database baru
+    await db.ref(`absen-app/app/user/${guruId}`).set(guruData);
 
     // Return data tanpa password
     const { password: _, ...guruWithoutPassword } = guruData;
@@ -82,10 +82,10 @@ router.put('/guru/:id', async (req, res) => {
     const updateData = req.body;
 
     // Cek guru exists
-    const snapshot = await db.ref(`absen-app/guru/${id}`).once('value');
+    const snapshot = await db.ref(`absen-app/app/user/${id}`).once('value');
     const guru = snapshot.val();
 
-    if (!guru) {
+    if (!guru || guru.role !== 'guru') {
       return res.status(404).json({ error: 'Guru tidak ditemukan' });
     }
 
@@ -95,21 +95,21 @@ router.put('/guru/:id', async (req, res) => {
 
     // Jika ada update email, cek duplikasi
     if (updateData.email && updateData.email !== guru.email) {
-      const allGuruSnapshot = await db.ref('absen-app/guru').once('value');
-      const allGuru = allGuruSnapshot.val();
+      const allUsersSnapshot = await db.ref('absen-app/app/user').once('value');
+      const allUsers = allUsersSnapshot.val();
       
-      if (allGuru) {
-        const emailExists = Object.entries(allGuru).some(([guruId, guruData]) => 
-          guruId !== id && guruData.email === updateData.email
+      if (allUsers) {
+        const emailExists = Object.entries(allUsers).some(([userId, userData]) => 
+          userId !== id && userData.email === updateData.email
         );
         if (emailExists) {
-          return res.status(400).json({ error: 'Email sudah digunakan guru lain' });
+          return res.status(400).json({ error: 'Email sudah digunakan user lain' });
         }
       }
     }
 
     // Update data guru
-    await db.ref(`absen-app/guru/${id}`).update(updateData);
+    await db.ref(`absen-app/app/user/${id}`).update(updateData);
 
     res.json({
       message: 'Data guru berhasil diperbarui',
@@ -126,20 +126,22 @@ router.put('/guru/:id', async (req, res) => {
 // Get semua guru
 router.get('/guru', async (req, res) => {
   try {
-    const snapshot = await db.ref('absen-app/guru').once('value');
-    const guru = snapshot.val();
+    const snapshot = await db.ref('absen-app/app/user').once('value');
+    const users = snapshot.val();
 
-    if (!guru) {
+    if (!users) {
       return res.json({ guru: [] });
     }
 
-    // Remove passwords dari response
-    const guruWithoutPasswords = Object.entries(guru).map(([id, data]) => {
-      const { password, ...guruData } = data;
-      return guruData;
-    });
+    // Filter hanya guru dan remove passwords
+    const guruList = Object.entries(users)
+      .filter(([id, data]) => data.role === 'guru')
+      .map(([id, data]) => {
+        const { password, ...guruData } = data;
+        return guruData;
+      });
 
-    res.json({ guru: guruWithoutPasswords });
+    res.json({ guru: guruList });
 
   } catch (error) {
     console.error('Get guru error:', error);
@@ -151,15 +153,15 @@ router.get('/guru', async (req, res) => {
 router.get('/guru/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const snapshot = await db.ref(`absen-app/guru/${id}`).once('value');
-    const guru = snapshot.val();
+    const snapshot = await db.ref(`absen-app/app/user/${id}`).once('value');
+    const user = snapshot.val();
 
-    if (!guru) {
+    if (!user || user.role !== 'guru') {
       return res.status(404).json({ error: 'Guru tidak ditemukan' });
     }
 
     // Remove password dari response
-    const { password, ...guruWithoutPassword } = guru;
+    const { password, ...guruWithoutPassword } = user;
     
     res.json({ guru: guruWithoutPassword });
 
@@ -175,15 +177,15 @@ router.delete('/guru/:id', async (req, res) => {
     const { id } = req.params;
 
     // Cek guru exists
-    const snapshot = await db.ref(`absen-app/guru/${id}`).once('value');
-    const guru = snapshot.val();
+    const snapshot = await db.ref(`absen-app/app/user/${id}`).once('value');
+    const user = snapshot.val();
 
-    if (!guru) {
+    if (!user || user.role !== 'guru') {
       return res.status(404).json({ error: 'Guru tidak ditemukan' });
     }
 
     // Hapus guru
-    await db.ref(`absen-app/guru/${id}`).remove();
+    await db.ref(`absen-app/app/user/${id}`).remove();
 
     res.json({
       message: 'Guru berhasil dihapus',
