@@ -1,85 +1,120 @@
 {
     "absen-app": {
-        "siswa":{
-            "(id siswa (jurusan)-(acak))": {
-                "id": "id siswa (jurusan)-(acak)",
-                "nama": "nama user",
-                "telephone": "no hp user",
-                "email": "email user",
-                "password": "password user",
-                "jenis_kelamin": "(laki-laki, perempuan)",
-                "role": "siswa",
-                "alamat": {
-                    "provinsi": "provinsi",
-                    "kota": "kota",
-                    "kecamatan": "kecamatan",
-                    "kode_pos": "kode pos",
-                    "desa": "desa",
-                    "rt": "rt",
-                    "rw": "rw"
+        "app": {
+            "user": {
+                "(id siswa (jurusan)-(acak)) / (id guru (acak) 10 karakter)": {
+                    "id": "id siswa (jurusan)-(acak) / id guru (acak) 10 karakter",
+                    "nama": "nama user",
+                    "telephone": "no hp user",
+                    "email": "email user",
+                    "password": "password user",
+                    "jenis_kelamin": "(laki-laki, perempuan)",
+                    "role": "siswa / guru",
+                    "alamat": {
+                        "provinsi": "provinsi",
+                        "kota": "kota",
+                        "kecamatan": "kecamatan",
+                        "kode_pos": "kode pos",
+                        "desa": "desa",
+                        "rt": "rt",
+                        "rw": "rw"
+                    },
+                    "detail (if role = siswa)": {
+                        "id_kelas": "id kelas siswa yang kelas/detail_kelas",
+                        "nama_ibu": "nama orang tua",
+                        "nama_ayah": "nama orang tua",
+                        "telephone_ortu": "no hp orang tua",
+                        "nisn": "nisn siswa",
+                        "kelas": "kelas siswa",
+                        "jurusan": "jurusan siswa",
+                        "status": "(1 = active, 0 = inactive)",
+                        "authToken": "token acak 10 karakter",
+                        "user-agent": "user-agent browser"
+                    }
+                }
+            },
+
+            "kelas": {
+                "tingkat": {
+                    "(id random)": {
+                        "tingkat": "10/11/12"
+                    }
                 },
-                "detail": {
-                    "nama_ibu": "nama orang tua",
-                    "nama_ayah": "nama orang tua",
-                    "telephone_ortu": "no hp orang tua",
-                    "nisn": "nisn siswa",
-                    "kelas": "kelas siswa",
-                    "jurusan": "jurusan siswa",
-                    "status": "(1 = active, 0 = inactive)"
+                "jurusan": {
+                    "(id random)": {
+                        "(id random)": {
+                            "nama": "nama jurusan misal (tkj 1, tkj2, tkj3)"
+                        }
+                    }
+                },
+                "detail_kelas": {
+                    "(id unik kelas)": {
+                        "id": "id unik kelas",
+                        "nama_kelas": "nama kelas (misal: (tingkat)-(jurusan) misal: 10-tkj1)",
+                        "tingkat": "10/11/12",
+                        "jurusan": "(id jurusan)",
+                        "bk_kelas": "(id guru wali kelas)",
+                        "status": "(1 = active, 0 = inactive)"
+                    }
                 }
-            }
-        },
-        "guru": {
-            "(id acak)": {
-                "id": "id acak",
-                "nama": "nama guru",
-                "telephone": "no hp guru",
-                "email": "email guru",
-                "password": "password guru",
-                "jenis_kelamin": "(laki-laki, perempuan)",
-                "role": "guru",
-                "alamat": {
-                    "provinsi": "provinsi",
-                    "kota": "kota",
-                    "kecamatan": "kecamatan",
-                    "kode_pos": "kode pos",
-                    "desa": "desa",
-                    "rt": "rt",
-                    "rw": "rw"
-                }
-            }
-        },
-        "kelas": {
-            "(id acak)": {
-                "id": "id acak",
-                "kelas": "kelas",
-                "jurusan": "jurusan"
-            }
-        },
-        "absen": {
-            "(id kelas)": {
-                "(id siswa)": {
-                    "tanggal-bulan-tahun": {
-                        "(id acak)": {
-                            "id": "id acak",
-                            "id_siswa": "id siswa",
-                            "jam": "jam sekarang",
-                            "menit": "menit sekarang",
-                            "tanggal": "tanggal hari ini",
-                            "bulan": "bulan ini",
-                            "tahun": "tahun ini",
-                            "keterangan": "hadir",
-                            "kelas": "kelas",
-                            "jurusan": "jurusan"
+            },
+
+            "absen": {
+                "(id kelas yang detail kelas)": {
+                    "(id siswa)": {
+                        "tanggal-bulan-tahun": {
+                            "(id acak)": {
+                                "id": "id acak",
+                                "id_siswa": "id siswa",
+                                "jam": "jam sekarang",
+                                "menit": "menit sekarang",
+                                "tanggal": "tanggal hari ini",
+                                "bulan": "bulan ini",
+                                "tahun": "tahun ini",
+                                "keterangan": "hadir",
+                                "kelas": "kelas",
+                                "jurusan": "jurusan"
+                            }
                         }
                     }
                 }
+            },
+
+            "qr-unique-code(hanya siswa, jika benar maka tambahkan detail siswa ke /absen/(id-kelas)/(id-siswa)/(id-acak) wajib login sebagai siswa": {
+                "(id kelas yang detail_kelas)": {
+                    "id": "id acak",
+                    "code": "huruf acak 20 karakter"
+                }
             }
+    
         },
-        "qr-unique-code(hanya siswa, jika benar maka tambahkan detail siswa ke /absen/(id-kelas)/(id-siswa)/(id-acak) wajib login sebagai siswa": {
-            "(id kelas dan jurusan)": {
+
+        "konsul": {
+            "(id acak)": {
                 "id": "id acak",
-                "code": "huruf acak 20 karakter"
+                "id_siswa": "id siswa",
+                "id_guru": "id guru",
+                "tanggal": "tanggal konsul",
+                "bulan": "bulan konsul",
+                "tahun": "tahun konsul",
+                "keterangan": "keterangan konsul",
+                "status": "(1 = active, 0 = inactive)",
+                "kelas": "(id kelas siswa)",
+                "jurusan": "(id jurusan siswa)",
+                "chat": {
+                    "(id acak chat)": {
+                        "id": "id acak chat",
+                        "id_pengirim": "id siswa / id guru",
+                        "pesan": "pesan chat",
+                        "tanggal": "tanggal pesan",
+                        "bulan": "bulan pesan",
+                        "tahun": "tahun pesan",
+                        "waktu": {
+                            "jam": "jam pesan",
+                            "menit": "menit pesan"
+                        }
+                    }
+                }
             }
         }
     }
