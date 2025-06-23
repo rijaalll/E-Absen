@@ -36,31 +36,41 @@ export const siswaAPI = {
   getAll: () => api.get('/siswa'),
   getById: (id) => api.get(`/siswa/${id}`),
   update: (id, data) => api.put(`/siswa/${id}`, data),
+  delete: (id) => api.delete(`/siswa/${id}`),
 };
 
 // Guru APIs
 export const guruAPI = {
+  register: (data) => api.post('/guru/register', data),
   getAll: () => api.get('/guru'),
-  create: (data) => api.post('/guru', data),
+  getById: (id) => api.get(`/guru/${id}`),
   update: (id, data) => api.put(`/guru/${id}`, data),
   delete: (id) => api.delete(`/guru/${id}`),
 };
 
 // Kelas APIs
 export const kelasAPI = {
-  getAll: () => api.get('/kelas'),
-  getById: (id) => api.get(`/kelas/${id}`),
-  create: (data) => api.post('/kelas', data),
-  update: (id, data) => api.put(`/kelas/${id}`, data),
-  delete: (id) => api.delete(`/kelas/${id}`),
+  // Tingkat
+  createTingkat: (data) => api.post('/kelas/tingkat', data),
+  getAllTingkat: () => api.get('/kelas/tingkat'),
+  
+  // Jurusan
+  createJurusan: (data) => api.post('/kelas/jurusan', data),
+  getAllJurusan: () => api.get('/kelas/jurusan'),
+  
+  // Detail Kelas
+  createDetail: (data) => api.post('/kelas/detail', data),
+  getAllDetail: (params) => api.get('/kelas/detail', { params }),
+  getDetailById: (id) => api.get(`/kelas/detail/${id}`),
+  updateDetail: (id, data) => api.put(`/kelas/detail/${id}`, data),
+  deleteDetail: (id) => api.delete(`/kelas/detail/${id}`),
 };
 
 // QR APIs
 export const qrAPI = {
-  get: (kelas, jurusan) => api.get(`/qr/${kelas}/${jurusan}`),
-  getByKelas: (kelas, jurusan) => api.get(`/qr/${kelas}/${jurusan}`),
   generate: (data) => api.post('/qr/generate', data),
   refresh: (data) => api.put('/qr/refresh', data),
+  getByKelas: (kelas, jurusan) => api.get(`/qr/${kelas}/${jurusan}`),
   verify: (data) =>
     api.post('/qr/verify', data).catch((error) => {
       console.error('QR Verification Failed:', {
